@@ -1,44 +1,68 @@
-import express from 'express'
-import movieRoute from "./Routes/movieRoutes"
-import {config} from "dotenv"
-import { connectDB, disconnectDB } from './config/db';
+import express from "express";
+import cookieParser from "cookie-parser";
+import cors from "cors";
+import { config } from "dotenv";
+import movieRoute from "./Routes/movieRoutes";
+import authRoute from "./Routes/authRoutes";
+import watchlistRoute from "./Routes/watchlistRoutes";
+import { connectDB, disconnectDB } from "./config/db";
 
-config();
+config({ override: true });
 connectDB();
 
-const app = express()
+const app = express();
 
-app.use("/movies", movieRoute)
+// CORS configuration for frontend
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL || "http://localhost:3000",
+    credentials: true,
+  })
+);
 
-const PORT = 4000
+// Body parsing Middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
+// Routes (supporting both /api/* and direct routes)
+app.use("/api/auth", authRoute);
+app.use("/auth", authRoute);
 
-const server = app.listen(PORT, ()=>{
-    console.log("Server runnig on port: ", PORT)
-})
+app.use("/api/movies", movieRoute);
+app.use("/movies", movieRoute);
 
-process.on("unhandledRejection", (err)=>{
-    console.error("Unhandled Rejection:", err)
-    server.close(async () =>{
-        await disconnectDB();
-        process.exit(1);
-    })
-})
+app.use("/api/watchlist", watchlistRoute);
+app.use("/watchlist", watchlistRoute);
 
-process.on("UncaughtException", (err)=>{
-    console.error("Uncaught Exception:", err)
-    server.close(async () =>{
-        await disconnectDB();
-        process.exit(1);
-    })
-})
+const PORT = Number(process.env.PORT) || 4001;
 
-process.on("SIGTERM", (err)=>{
-    console.error("SIGTERM received, shutting down gracefully ")
-    server.close(async () =>{
-        await disconnectDB();
-        process.exit(0);
-    })
-})
+const server = app.listen(PORT, () => {
+  console.log(`Server running on port: ${PORT}`);
+});
 
+process.on("unhandledRejection", (err) => {
+  console.error("Unhandled Rejection:", err);
+  server.close(async () => {
+    await disconnectDB();
+    process.exit(1);
+  });
+});
 
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught Exception:", err);
+  server.close(async () => {
+    await disconnectDB();
+    process.exit(1);
+  });
+});
+
+process.on("SIGTERM", () => {
+  console.log("SIGTERM received, shutting down gracefully");
+  server.close(async () => {
+    await disconnectDB();
+    process.exit(0);
+  });
+});
+
+export default app;

@@ -15,11 +15,18 @@ datasource db {
 
 model User{
   id String @id @default(uuid())
-  name String
+  name String?
   email String @unique
-  password String
+  password String?
+  avatarUrl String?
+
+  provider      String?    // 'google' | 'github' | 'local'
+  providerId    String?    // Unique ID from Google or GitHub
 
   createdAt DateTime @default(now())
+  watchlists Watchlist[]
+
+   @@unique([provider, providerId])
 
 }
 
@@ -33,6 +40,30 @@ model Movie{
   posterUrl String?
   createdBy String
   createdAt DateTime @default(now())
-  
+  watchlists Watchlist[]
 
+}
+
+model Watchlist{
+  id String @id @default(uuid())
+  userId String
+  movieId String
+  status WatchlistStatus @default(PLANNED)
+  rating Int?
+  notes String?
+  updatedAt DateTime @default(now())
+  createdAt DateTime @default(now()) 
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@unique ([userId, movieId])
+
+}
+
+enum WatchlistStatus{
+  PLANNED
+  WATCHING
+  COMPLETED
+  DROPPED
 }
